@@ -2,10 +2,11 @@ import inquirer from 'inquirer';
 import { checkAnkiConnect, getDecks, getCardsFromDeck } from './anki-connect.js';
 import { viewCards, viewNotesList } from './card-viewer.js';
 import { enhanceNotes, enhanceMultipleNotes } from './note-enhancer.js';
+import { generateSentence } from './sentence-generator.js';
 import { NoteInfo } from './types.js';
 
 type MainMenuAction = 'select_deck' | 'exit';
-type DeckMenuAction = 'view_cards' | 'view_notes' | 'enhance_notes' | 'enhance_multiple' | 'back';
+type DeckMenuAction = 'view_cards' | 'view_notes' | 'enhance_notes' | 'enhance_multiple' | 'generate_sentence' | 'back';
 
 async function showMainMenu(): Promise<MainMenuAction> {
     const { action } = await inquirer.prompt<{ action: MainMenuAction }>([
@@ -49,6 +50,7 @@ async function showDeckMenu(deckName: string): Promise<DeckMenuAction> {
                 { name: 'View notes (as list)', value: 'view_notes' },
                 { name: 'Enhance single note with AI', value: 'enhance_notes' },
                 { name: 'Enhance multiple notes with AI', value: 'enhance_multiple' },
+                { name: 'Generate practice sentence', value: 'generate_sentence' },
                 { name: 'Back to main menu', value: 'back' }
             ]
         }
@@ -97,6 +99,10 @@ async function main(): Promise<void> {
                         console.log('Loading notes...');
                         const notes = await getCardsFromDeck(selectedDeck);
                         await enhanceMultipleNotes(notes);
+                    } else if (deckAction === 'generate_sentence') {
+                        console.log('Loading notes...');
+                        const notes = await getCardsFromDeck(selectedDeck);
+                        await generateSentence(notes);
                     }
                 }
             }
