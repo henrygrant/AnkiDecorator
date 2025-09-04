@@ -1,12 +1,18 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import inquirer from 'inquirer';
+import fs from 'fs';
+import path from 'path';
 import { checkAnkiConnect, getDecks, getCardsFromDeck } from './anki-connect.js';
 import { viewCards, viewNotesList } from './card-viewer.js';
 import { enhanceNotes, enhanceMultipleNotes } from './note-enhancer.js';
 import { generateSentence } from './sentence-generator.js';
 import { NoteInfo } from './types.js';
+import { AudioGenerator } from './audio-generator.js';
 
 type MainMenuAction = 'select_deck' | 'exit';
-type DeckMenuAction = 'view_cards' | 'view_notes' | 'enhance_notes' | 'enhance_multiple' | 'generate_sentence' | 'back';
+type DeckMenuAction = 'view_cards' | 'view_notes' | 'enhance_notes' | 'enhance_multiple' | 'generate_sentence' | 'generate_audio' | 'export_json' | 'back';
 
 async function showMainMenu(): Promise<MainMenuAction> {
     const { action } = await inquirer.prompt<{ action: MainMenuAction }>([
@@ -51,6 +57,8 @@ async function showDeckMenu(deckName: string): Promise<DeckMenuAction> {
                 { name: 'Enhance single note with AI', value: 'enhance_notes' },
                 { name: 'Enhance multiple notes with AI', value: 'enhance_multiple' },
                 { name: 'Generate practice sentence', value: 'generate_sentence' },
+                { name: 'Generate audio for notes', value: 'generate_audio' },
+                { name: 'Export deck as JSON', value: 'export_json' },
                 { name: 'Back to main menu', value: 'back' }
             ]
         }
@@ -63,26 +71,26 @@ async function main(): Promise<void> {
         console.log('Checking AnkiConnect connection...');
         await checkAnkiConnect();
         console.log('Successfully connected to AnkiConnect!\n');
-        
+
         while (true) {
             const mainAction = await showMainMenu();
-            
+
             if (mainAction === 'exit') {
                 console.log('Goodbye!');
                 break;
             }
-            
+
             if (mainAction === 'select_deck') {
                 const decks = await getDecks();
                 const selectedDeck = await selectDeck(decks);
-                
+
                 while (true) {
                     const deckAction = await showDeckMenu(selectedDeck);
-                    
+
                     if (deckAction === 'back') {
                         break;
                     }
-                    
+
                     if (deckAction === 'view_cards') {
                         console.log('Loading cards...');
                         const cards = await getCardsFromDeck(selectedDeck);
@@ -103,6 +111,20 @@ async function main(): Promise<void> {
                         console.log('Loading notes...');
                         const notes = await getCardsFromDeck(selectedDeck);
                         await generateSentence(notes);
+                    } else if (deckAction === 'generate_audio') {
+                        console.log('Loading notes...');
+                        const notes = await getCardsFromDeck(selectedDeck);
+                        const filteredNotes = notes.filter(note => !note.fields.Audio.value);
+                        const audioGenerator = new AudioGenerator();
+                        await audioGenerator.generateAudioForNotes(filteredNotes);
+                        console.log('Audio generation complete!');
+                    } else if (deckAction === 'export_json') {
+                        console.log('Loading notes...');
+                        const notes = await getCardsFromDeck(selectedDeck);
+                        const filename = `${selectedDeck.replace(/::/, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+                        const filepath = path.join(process.cwd(), filename);
+                        await fs.promises.writeFile(filepath, JSON.stringify(notes, null, 2));
+                        console.log(`\nDeck exported to ${filename}`);
                     }
                 }
             }

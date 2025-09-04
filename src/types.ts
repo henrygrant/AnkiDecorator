@@ -23,7 +23,8 @@ export type AnkiAction =
     | 'notesInfo'
     | 'updateNoteFields'
     | 'addTags'
-    | 'removeTags';
+    | 'removeTags'
+    | 'storeMediaFile';
 
 export interface AnkiConnectRequest<T = unknown> {
     action: AnkiAction;

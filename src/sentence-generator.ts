@@ -1,6 +1,7 @@
 import { NoteInfo } from './types.js';
 import OpenAI from 'openai';
 import { config } from 'dotenv';
+import inquirer from 'inquirer';
 
 config();
 
@@ -29,23 +30,20 @@ export async function generateSentence(notes: NoteInfo[]): Promise<void> {
     }));
 
     // Select 10 random words for the AI to choose from
-    const candidateWords = selectRandomWords(words, 10);
+    const candidateWords = selectRandomWords(words, 25);
 
     try {
         // First, let the AI select 3-4 words that work well together
         const wordSelection = await selectRelatedWords(candidateWords);
-        
+
         console.log('\nSelected words that work well together:');
         wordSelection.forEach(word => {
-            console.log(`- ${word.korean} (${word.english})`);
+            console.log(`- ${word.korean}`);
         });
 
         // Then generate a sentence using those words
         const sentence = await createSentence(wordSelection);
-        console.log('\nGenerated sentence:');
-        console.log('Korean:', sentence.korean);
-        console.log('English:', sentence.english);
-        console.log('Grammar notes:', sentence.grammarNotes);
+        await presentSentencePractice(sentence);
     } catch (error) {
         console.error('\nError:', error instanceof Error ? error.message : String(error));
     }
@@ -60,6 +58,51 @@ interface GeneratedSentence {
     korean: string;
     english: string;
     grammarNotes: string;
+}
+
+async function presentSentencePractice(sentence: GeneratedSentence): Promise<void> {
+    console.log('\nPractice the following sentence:');
+    console.log('Korean:', sentence.korean);
+
+    let continuing = true;
+    while (continuing) {
+        const { action } = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'action',
+                message: 'What would you like to see?',
+                choices: [
+                    { name: 'Show English translation', value: 'english' },
+                    { name: 'Show grammar notes', value: 'grammar' },
+                    { name: 'Show Korean sentence again', value: 'korean' },
+                    { name: 'Show all', value: 'all' },
+                    { name: 'Continue', value: 'continue' }
+                ]
+            }
+        ]);
+
+        console.log(); // Empty line for spacing
+        switch (action) {
+            case 'english':
+                console.log('English:', sentence.english);
+                break;
+            case 'grammar':
+                console.log('Grammar notes:', sentence.grammarNotes);
+                break;
+            case 'korean':
+                console.log('Korean:', sentence.korean);
+                break;
+            case 'all':
+                console.log('Korean:', sentence.korean);
+                console.log('English:', sentence.english);
+                console.log('Grammar notes:', sentence.grammarNotes);
+                break;
+            case 'continue':
+                continuing = false;
+                break;
+        }
+        console.log(); // Empty line for spacing
+    }
 }
 
 async function selectRelatedWords(words: Array<{ korean: string; english: string }>): Promise<Array<{ korean: string; english: string }>> {
@@ -117,9 +160,9 @@ async function selectRelatedWords(words: Array<{ korean: string; english: string
     }
 
     // Log the reason if provided
-    if (result.reason) {
-        console.log('\nSelection reasoning:', result.reason);
-    }
+    // if (result.reason) {
+    //     console.log('\nSelection reasoning:', result.reason);
+    // }
 
     // Return the selected words
     return result.selectedIndices
@@ -139,7 +182,7 @@ async function createSentence(words: Array<{ korean: string; english: string }>)
                 {
                     role: "user",
                     content: `Create a Korean sentence using these words: ${words.map(w => `${w.korean} (${w.english})`).join(', ')}.
-The sentence should be suitable for beginner-intermediate learners.`
+The sentence should be suitable for beginner-intermediate learners. Feel free to use past, present, or future tense.`
                 }
             ],
             tools: [

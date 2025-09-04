@@ -1,4 +1,5 @@
 import fetch, { AbortError } from 'node-fetch';
+import fs from 'fs';
 import type { AnkiAction, AnkiConnectRequest, AnkiConnectResponse, NoteInfo, UpdateNoteFields } from './types.js';
 
 const ANKI_CONNECT_URL = 'http://localhost:8765';
@@ -129,4 +130,14 @@ export async function removeTag(noteIds: number[], tag: string): Promise<void> {
         notes: noteIds,
         tags: tag
     });
+}
+
+export async function storeMediaFile(filename: string, filepath: string): Promise<void> {
+    const fileContent = await fs.promises.readFile(filepath, { encoding: 'base64' });
+    await invokeAnkiConnect<void>('storeMediaFile', {
+        filename,
+        data: fileContent
+    });
+    // Clean up the temporary file
+    await fs.promises.unlink(filepath);
 }
